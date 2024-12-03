@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CryptoGDP</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -24,19 +25,56 @@
         }
 
         header {
-            background-color: #1a1a1a;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2c3e50 100%);
             color: white;
-            padding: 20px 0;
+            padding: 30px 0;
             margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
         .header-content {
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
         }
 
-        h1 {
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 5px;
+        }
+
+        .logo-icon {
             font-size: 2.5em;
-            margin-bottom: 20px;
+            color: #3498db;
+            animation: pulse 2s infinite;
+        }
+
+        .title-container h1 {
+            font-size: 2.8em;
+            margin: 0;
+            background: linear-gradient(45deg, #3498db, #2ecc71);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            color: #ecf0f1;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.4;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
 
         .stats-container {
@@ -181,13 +219,52 @@
             margin-top: 8px;
             margin-bottom: 0;
         }
+
+        .custom-popup .resize-handle {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            width: 15px;
+            height: 15px;
+            cursor: se-resize;
+            background: #666;
+            clip-path: polygon(100% 0, 100% 100%, 0 100%);
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+
+        .custom-popup .resize-handle:hover {
+            opacity: 0.8;
+        }
+
+        .leaflet-popup-content {
+            margin: 13px;
+            min-width: 50px;
+            min-height: 50px;
+        }
+
+        .leaflet-popup-content-wrapper {
+            transition: width 0.1s, height 0.1s;
+        }
+
+        .leaflet-popup-content-wrapper.resizing {
+            transition: none;
+        }
     </style>
 </head>
 <body>
     <header>
         <div class="container header-content">
-            <h1>CryptoGDP</h1>
-            <p>Interactive map showing cryptocurrency's economic impact across the globe</p>
+            <div class="logo-container">
+                <i class="fas fa-globe logo-icon"></i>
+                <div class="title-container">
+                    <h1>CryptoGDP</h1>
+                </div>
+            </div>
+            <p class="subtitle">
+                Exploring the Economic Impact of Cryptocurrency Across the Globe 
+                <i class="fas fa-chart-line" style="margin-left: 8px; color: #3498db;"></i>
+            </p>
         </div>
     </header>
 
@@ -276,14 +353,20 @@
 
         // Initialize the map with better default settings
         const map = L.map('map', {
-            minZoom: 2,  // Prevent zooming out too far
-            maxZoom: 8,  // Limit maximum zoom to maintain performance
-            maxBounds: [[-90, -180], [90, 180]],  // Prevent scrolling off the map
-            maxBoundsViscosity: 1.0,  // Make the bounds "hard" - no moving outside them
-            zoomSnap: 0.5,  // Allow finer zoom levels
-            zoomDelta: 0.5,  // Smaller zoom changes with mouse wheel
-            wheelDebounceTime: 150  // Smooth out wheel zooming
-        }).setView([30, 0], 2.5);
+            minZoom: 1.5,  // Lowered minimum zoom to allow wider view
+            maxZoom: 8,
+            maxBounds: [[-90, -180], [90, 180]],
+            maxBoundsViscosity: 1.0,
+            zoomControl: true,
+            scrollWheelZoom: false,
+            touchZoom: false,
+            doubleClickZoom: false,
+            boxZoom: false,
+            keyboard: false
+        }).setView([20, 0], 1.8);  // Significantly reduced zoom level and adjusted center
+
+        // Optional: If you want to customize the position of zoom controls, add this:
+        map.zoomControl.setPosition('topright');
 
         // Update the tile layer with better options
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -562,7 +645,7 @@
                 const estimatedCryptoGDP = (gdpData.gdp * gdpContribution / 100);
                 
                 return `
-                    <div style="padding: 15px;">
+                    <div style="padding: 15px; position: relative;">
                         <h3 style="margin-bottom: 15px;">${countryName}</h3>
                         
                         <div style="font-size: 1.2em; margin-bottom: 20px;">
@@ -627,6 +710,7 @@
                                 </div>
                             </div>
                         </details>
+                        <div class="resize-handle"></div>
                     </div>
                 `;
             }
@@ -686,11 +770,23 @@
                 const response = await fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson');
                 const geoData = await response.json();
 
-                // Update the style function to use crypto GDP contribution
+                // Update the style function to use grey for countries without data
                 function style(feature) {
                     const iso3 = feature.properties.ISO_A3;
                     const data = gdpData[iso3];
-                    const cryptoGDPContribution = data ? calculateCryptoGDPContribution(cryptoAdoptionData[data.name]) : 0;
+                    
+                    // If there's no GDP data or no crypto adoption data for the country, return grey
+                    if (!data || !cryptoAdoptionData[data.name]) {
+                        return {
+                            fillColor: '#cccccc',  // grey color for no data
+                            weight: 2,
+                            opacity: 1,
+                            color: 'white',
+                            fillOpacity: 0.7
+                        };
+                    }
+
+                    const cryptoGDPContribution = calculateCryptoGDPContribution(cryptoAdoptionData[data.name]);
                     return {
                         fillColor: getColor(cryptoGDPContribution),
                         weight: 2,
@@ -730,58 +826,91 @@
                             const bounds = layer.getBounds();
                             const center = bounds.getCenter();
                             
-                            // Create popup first
+                            // Create and show popup without zooming
                             if (data) {
                                 const popup = L.popup({
                                     maxWidth: 400,
-                                    autoPan: false,  // Disable automatic panning
-                                    className: 'custom-popup'
+                                    className: 'custom-popup',
+                                    draggable: true,
+                                    autoPan: false
                                 })
                                 .setLatLng(center)
-                                .setContent(createPopupContent(data.name, data));
-                                
-                                // Calculate appropriate zoom level based on country size
-                                const countryWidth = bounds.getEast() - bounds.getWest();
-                                const countryHeight = bounds.getNorth() - bounds.getSouth();
-                                const maxDimension = Math.max(countryWidth, countryHeight);
-                                
-                                // Adjust zoom based on country size
-                                let targetZoom;
-                                if (maxDimension > 45) targetZoom = 3;      // Very large countries
-                                else if (maxDimension > 25) targetZoom = 4; // Large countries
-                                else if (maxDimension > 10) targetZoom = 5; // Medium countries
-                                else targetZoom = 6;                        // Small countries
+                                .setContent(createPopupContent(data.name, data))
+                                .openOn(map);
 
-                                // First fit bounds with padding
-                                map.fitBounds(bounds, {
-                                    padding: [100, 100],
-                                    maxZoom: targetZoom,
-                                    animate: true,
-                                    duration: 1
-                                });
-
-                                // Wait for the zoom animation to complete before showing popup
-                                setTimeout(() => {
-                                    popup.openOn(map);
+                                // Make the popup draggable after it's added to the map
+                                const popupElement = popup.getElement();
+                                if (popupElement) {
+                                    popupElement.style.cursor = 'move';
+                                    L.DomEvent.on(popupElement, 'mousedown', function(e) {
+                                        if (e.target.tagName !== 'SUMMARY') {  // Don't start drag if clicking on details/summary
+                                            const startPos = { x: e.clientX, y: e.clientY };
+                                            const startLatLng = popup.getLatLng();
+                                            
+                                            function onMouseMove(e) {
+                                                const dx = e.clientX - startPos.x;
+                                                const dy = e.clientY - startPos.y;
+                                                const point = map.latLngToContainerPoint(startLatLng);
+                                                const newPoint = L.point(point.x + dx, point.y + dy);
+                                                const newLatLng = map.containerPointToLatLng(newPoint);
+                                                popup.setLatLng(newLatLng);
+                                            }
+                                            
+                                            function onMouseUp() {
+                                                document.removeEventListener('mousemove', onMouseMove);
+                                                document.removeEventListener('mouseup', onMouseUp);
+                                            }
+                                            
+                                            document.addEventListener('mousemove', onMouseMove);
+                                            document.addEventListener('mouseup', onMouseUp);
+                                        }
+                                    });
                                     
-                                    // Adjust map view if popup is cut off
-                                    const popupBounds = popup.getElement().getBoundingClientRect();
-                                    const mapBounds = map.getContainer().getBoundingClientRect();
+                                    // Add resize functionality
+                                    const popupContent = popupElement.querySelector('.leaflet-popup-content');
+                                    const resizeHandle = popupElement.querySelector('.resize-handle');
                                     
-                                    if (popupBounds.right > mapBounds.right ||
-                                        popupBounds.left < mapBounds.left ||
-                                        popupBounds.top < mapBounds.top ||
-                                        popupBounds.bottom > mapBounds.bottom) {
+                                    if (resizeHandle && popupContent) {
+                                        let isResizing = false;
+                                        let startWidth, startHeight, startX, startY;
                                         
-                                        map.panInside(center, {
-                                            padding: [50, 50],
-                                            animate: true
+                                        resizeHandle.addEventListener('mousedown', function(e) {
+                                            isResizing = true;
+                                            startX = e.clientX;
+                                            startY = e.clientY;
+                                            startWidth = popupContent.offsetWidth;
+                                            startHeight = popupContent.offsetHeight;
+                                            
+                                            popupElement.classList.add('resizing');
+                                            
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                        });
+                                        
+                                        document.addEventListener('mousemove', function(e) {
+                                            if (!isResizing) return;
+                                            
+                                            const dx = e.clientX - startX;
+                                            const dy = e.clientY - startY;
+                                            
+                                            popupContent.style.width = (startWidth + dx) + 'px';
+                                            popupContent.style.height = (startHeight + dy) + 'px';
+                                            
+                                            popup.update();
+                                        });
+                                        
+                                        document.addEventListener('mouseup', function() {
+                                            if (isResizing) {
+                                                isResizing = false;
+                                                popupElement.classList.remove('resizing');
+                                            }
                                         });
                                     }
-                                }, 1000);
+                                }
                             } else {
                                 const popup = L.popup({
                                     maxWidth: 300,
+                                    draggable: true,
                                     autoPan: false
                                 })
                                 .setLatLng(center)
