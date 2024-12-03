@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoGDP</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background-color: #1a1a1a;
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 20px;
+        }
+
+        .header-content {
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+
+        #map {
+            height: 600px;
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .legend {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+        .legend {
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .legend-item {
+            margin: 5px 0;
+        }
+
+        .legend-color {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+        }
+
+        .custom-popup {
+            margin-top: -50px;  /* Adjust popup position upward */
+        }
+
+        .leaflet-popup-content {
+            margin: 0;
+            overflow-y: auto;
+            max-height: 500px;  /* Maximum height for popup content */
+        }
+
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+        }
+
+        .methodology-section {
+            margin-top: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .methodology-section details {
+            width: 100%;
+        }
+
+        .methodology-section summary {
+            padding: 20px;
+            cursor: pointer;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .methodology-section summary:hover {
+            background: #f8f9fa;
+        }
+
+        .methodology-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            padding: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .methodology-column {
+            padding: 15px;
+        }
+
+        .methodology-column h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .methodology-column ul, 
+        .methodology-column ol {
+            padding-left: 20px;
+            margin-bottom: 20px;
+        }
+
+        .methodology-column li {
+            margin-bottom: 8px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .methodology-column li ul {
+            margin-top: 8px;
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-content">
+            <h1>CryptoGDP</h1>
+            <p>Interactive map showing cryptocurrency's economic impact across the globe</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-value">$2.1T</div>
+                <div class="stat-label">Global Crypto Market Cap</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">3.2%</div>
+                <div class="stat-label">of Global GDP</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">155</div>
+                <div class="stat-label">Countries Ranked</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">420M+</div>
+                <div class="stat-label">Global Crypto Users</div>
+            </div>
+        </div>
+
+        <div id="map"></div>
+
+        <div class="methodology-section">
+            <details>
+                <summary>Methodology & Assumptions</summary>
+                <div class="methodology-content">
+                    <div class="methodology-column">
+                        <h4>Data Sources</h4>
+                        <ul>
+                            <li>Crypto Adoption: Chainalysis 2023 Global Crypto Adoption Index</li>
+                            <li>GDP Data: World Bank (2022)</li>
+                            <li>Geographic Data: Natural Earth Dataset</li>
+                        </ul>
+
+                        <h4>Key Metrics</h4>
+                        <ul>
+                            <li>Overall Crypto Adoption Rank (25%)</li>
+                            <li>Centralized Services Usage (20%)</li>
+                            <li>Retail & P2P Trading (15%)</li>
+                            <li>DeFi Adoption (15%)</li>
+                            <li>Retail DeFi Activity (10%)</li>
+                        </ul>
+                    </div>
+
+                    <div class="methodology-column">
+                        <h4>Calculation Method</h4>
+                        <ol>
+                            <li>Convert country rankings to percentile scores (0-100)</li>
+                            <li>Apply weighted average across all metrics</li>
+                            <li>Calculate GDP contribution using tiered approach:
+                                <ul>
+                                    <li>80+ score: 5-6% GDP impact</li>
+                                    <li>70-79 score: 4-5% GDP impact</li>
+                                    <li>60-69 score: 2-4% GDP impact</li>
+                                    <li>50-59 score: 1-2% GDP impact</li>
+                                    <li>Below 50: 0.1-1% GDP impact</li>
+                                </ul>
+                            </li>
+                        </ol>
+                    </div>
+
+                    <div class="methodology-column">
+                        <h4>Limitations</h4>
+                        <ul>
+                            <li>Rankings may not fully capture informal crypto economy</li>
+                            <li>Data gaps in certain regions</li>
+                            <li>Methodology assumes correlation between adoption metrics and economic impact</li>
+                            <li>Estimates are indicative and should not be used for financial decisions</li>
+                        </ul>
+                    </div>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Show loading message
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading';
+        loadingDiv.innerHTML = 'Loading GDP data...';
+        document.body.appendChild(loadingDiv);
+
+        // Initialize the map with better default settings
+        const map = L.map('map', {
+            minZoom: 2,  // Prevent zooming out too far
+            maxZoom: 8,  // Limit maximum zoom to maintain performance
+            maxBounds: [[-90, -180], [90, 180]],  // Prevent scrolling off the map
+            maxBoundsViscosity: 1.0,  // Make the bounds "hard" - no moving outside them
+            zoomSnap: 0.5,  // Allow finer zoom levels
+            zoomDelta: 0.5,  // Smaller zoom changes with mouse wheel
+            wheelDebounceTime: 150  // Smooth out wheel zooming
+        }).setView([30, 0], 2.5);
+
+        // Update the tile layer with better options
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 8,
+            minZoom: 2,
+            attribution: '© OpenStreetMap contributors',
+            noWrap: true  // Prevent the map from repeating horizontally
+        }).addTo(map);
+
+        // Color scale for GDP values
+        function getColor(cryptoGDPContribution) {
+            return cryptoGDPContribution > 5 ? '#800026' :
+                   cryptoGDPContribution > 4 ? '#BD0026' :
+                   cryptoGDPContribution > 3 ? '#E31A1C' :
+                   cryptoGDPContribution > 2 ? '#FC4E2A' :
+                   cryptoGDPContribution > 1 ? '#FD8D3C' :
+                   cryptoGDPContribution > 0.5 ? '#FEB24C' :
+                   cryptoGDPContribution > 0.1 ? '#FED976' :
+                                         '#FFEDA0';
+        }
+
+        // Create legend
+        const legend = L.control({position: 'bottomright'});
+        legend.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'legend');
+            const grades = [0, 0.1, 0.5, 1, 2, 3, 4, 5];
+            div.innerHTML = '<h4>Crypto GDP Contribution (%)</h4>';
+            
+            for (let i = 0; i < grades.length; i++) {
+                div.innerHTML +=
+                    '<div class="legend-item">' +
+                    '<span class="legend-color" style="background:' + getColor(grades[i] + 0.1) + '"></span> ' +
+                    grades[i] + '%' +
+                    (grades[i + 1] ? ' &ndash; ' + grades[i + 1] + '%' : '+') +
+                    '</div>';
+            }
+            return div;
+        };
+        legend.addTo(map);
+
+        // Add this mapping function before fetchGDPData()
+        function getStandardizedCountryName(countryName) {
+            const countryMapping = {
+                'United States of America': 'United States',
+                'Russian Federation': 'Russia',
+                'Czech Republic': 'Czechia',
+                'Korea, Rep.': 'South Korea',
+                'Congo, Dem. Rep.': 'Democratic Republic of the Congo',
+                'Congo, Rep.': 'Republic of the Congo',
+                'Slovak Republic': 'Slovakia',
+                // Add more mappings as needed
+            };
+            return countryMapping[countryName] || countryName;
+        }
+
+        // Modify the fetchGDPData function to use ISO3 codes
+        async function fetchGDPData() {
+            try {
+                const response = await fetch('https://api.worldbank.org/v2/country/all/indicator/NY.GDP.MKTP.CD?format=json&date=2022&per_page=300');
+                const data = await response.json();
+                
+                // Create GDP data object using ISO3 codes
+                const gdpData = {};
+                data[1].forEach(item => {
+                    if (item.value && item.countryiso3code) {
+                        gdpData[item.countryiso3code] = {
+                            gdp: item.value,
+                            color: getColor(item.value),
+                            name: item.country.value
+                        };
+                    }
+                });
+                
+                return gdpData;
+            } catch (error) {
+                console.error('Error fetching GDP data:', error);
+                return {};
+            }
+        }
+
+        // Function to format GDP values
+        function formatGDP(gdp) {
+            if (gdp >= 1000000000000) {
+                return `$${(gdp / 1000000000000).toFixed(2)}T`;
+            } else if (gdp >= 1000000000) {
+                return `$${(gdp / 1000000000).toFixed(2)}B`;
+            } else if (gdp >= 1000000) {
+                return `$${(gdp / 1000000).toFixed(2)}M`;
+            }
+            return `$${gdp.toFixed(2)}`;
+        }
+
+        // Add this data structure before initializeMap()
+        const cryptoAdoptionData = {
+            "India": { rank: 1, centralizedRank: 1, retailRank: 1, p2pRank: 5, defiRank: 1, retailDefiRank: 1 },
+            "Nigeria": { rank: 2, centralizedRank: 3, retailRank: 2, p2pRank: 1, defiRank: 4, retailDefiRank: 4 },
+            "Vietnam": { rank: 3, centralizedRank: 4, retailRank: 4, p2pRank: 2, defiRank: 3, retailDefiRank: 3 },
+            "United States": { rank: 4, centralizedRank: 2, retailRank: 8, p2pRank: 12, defiRank: 2, retailDefiRank: 2 },
+            "Ukraine": { rank: 5, centralizedRank: 5, retailRank: 3, p2pRank: 11, defiRank: 10, retailDefiRank: 10 },
+            "Philippines": { rank: 6, centralizedRank: 6, retailRank: 6, p2pRank: 19, defiRank: 7, retailDefiRank: 7 },
+            "Indonesia": { rank: 7, centralizedRank: 13, retailRank: 13, p2pRank: 14, defiRank: 5, retailDefiRank: 5 },
+            "Pakistan": { rank: 8, centralizedRank: 7, retailRank: 7, p2pRank: 9, defiRank: 20, retailDefiRank: 20 },
+            "Brazil": { rank: 9, centralizedRank: 9, retailRank: 11, p2pRank: 15, defiRank: 11, retailDefiRank: 11 },
+            "Thailand": { rank: 10, centralizedRank: 8, retailRank: 15, p2pRank: 44, defiRank: 6, retailDefiRank: 6 },
+            "China": { rank: 11, centralizedRank: 10, retailRank: 5, p2pRank: 13, defiRank: 23, retailDefiRank: 23 },
+            "Turkey": { rank: 12, centralizedRank: 11, retailRank: 9, p2pRank: 35, defiRank: 12, retailDefiRank: 12 },
+            "Russia": { rank: 13, centralizedRank: 12, retailRank: 10, p2pRank: 36, defiRank: 9, retailDefiRank: 9 },
+            "United Kingdom": { rank: 14, centralizedRank: 15, retailRank: 20, p2pRank: 38, defiRank: 8, retailDefiRank: 8 },
+            "Argentina": { rank: 15, centralizedRank: 14, retailRank: 12, p2pRank: 29, defiRank: 19, retailDefiRank: 19 },
+            "Mexico": { rank: 16, centralizedRank: 17, retailRank: 18, p2pRank: 30, defiRank: 16, retailDefiRank: 16 },
+            "Bangladesh": { rank: 17, centralizedRank: 18, retailRank: 19, p2pRank: 33, defiRank: 22, retailDefiRank: 22 },
+            "Japan": { rank: 18, centralizedRank: 22, retailRank: 21, p2pRank: 49, defiRank: 18, retailDefiRank: 18 },
+            "Canada": { rank: 19, centralizedRank: 25, retailRank: 23, p2pRank: 62, defiRank: 14, retailDefiRank: 14 },
+            "Morocco": { rank: 20, centralizedRank: 27, retailRank: 25, p2pRank: 21, defiRank: 26, retailDefiRank: 26 },
+            "Kenya": { rank: 21, centralizedRank: 20, retailRank: 34, p2pRank: 3, defiRank: 55, retailDefiRank: 55 },
+            "Spain": { rank: 22, centralizedRank: 28, retailRank: 32, p2pRank: 63, defiRank: 13, retailDefiRank: 13 },
+            "France": { rank: 23, centralizedRank: 26, retailRank: 28, p2pRank: 55, defiRank: 21, retailDefiRank: 21 },
+            "Tanzania": { rank: 24, centralizedRank: 57, retailRank: 62, p2pRank: 6, defiRank: 27, retailDefiRank: 27 },
+            "Uzbekistan": { rank: 25, centralizedRank: 44, retailRank: 39, p2pRank: 54, defiRank: 15, retailDefiRank: 15 },
+            "Germany": { rank: 26, centralizedRank: 23, retailRank: 26, p2pRank: 60, defiRank: 25, retailDefiRank: 25 },
+            "South Korea": { rank: 27, centralizedRank: 16, retailRank: 16, p2pRank: 75, defiRank: 29, retailDefiRank: 29 },
+            "Iran": { rank: 28, centralizedRank: 33, retailRank: 14, p2pRank: 57, defiRank: 31, retailDefiRank: 31 },
+            "Ghana": { rank: 29, centralizedRank: 31, retailRank: 30, p2pRank: 4, defiRank: 74, retailDefiRank: 74 },
+            "Cambodia": { rank: 30, centralizedRank: 45, retailRank: 43, p2pRank: 56, defiRank: 17, retailDefiRank: 17 },
+            "South Africa": { rank: 31, centralizedRank: 21, retailRank: 22, p2pRank: 25, defiRank: 45, retailDefiRank: 45 },
+            "Colombia": { rank: 32, centralizedRank: 24, retailRank: 24, p2pRank: 16, defiRank: 46, retailDefiRank: 46 },
+            "Taiwan": { rank: 33, centralizedRank: 34, retailRank: 34, p2pRank: 66, defiRank: 26, retailDefiRank: 26 },
+            "Poland": { rank: 34, centralizedRank: 30, retailRank: 27, p2pRank: 71, defiRank: 24, retailDefiRank: 24 },
+            "Egypt": { rank: 35, centralizedRank: 29, retailRank: 29, p2pRank: 24, defiRank: 50, retailDefiRank: 50 },
+            "Ethiopia": { rank: 36, centralizedRank: 39, retailRank: 38, p2pRank: 8, defiRank: 71, retailDefiRank: 71 },
+            "Italy": { rank: 37, centralizedRank: 34, retailRank: 37, p2pRank: 72, defiRank: 28, retailDefiRank: 28 },
+            "Malaysia": { rank: 38, centralizedRank: 42, retailRank: 51, p2pRank: 40, defiRank: 37, retailDefiRank: 37 },
+            "Netherlands": { rank: 39, centralizedRank: 38, retailRank: 46, p2pRank: 69, defiRank: 32, retailDefiRank: 32 },
+            "Venezuela": { rank: 40, centralizedRank: 19, retailRank: 17, p2pRank: 32, defiRank: 90, retailDefiRank: 90 },
+            "Australia": { rank: 41, centralizedRank: 37, retailRank: 42, p2pRank: 70, defiRank: 33, retailDefiRank: 33 },
+            "Cameroon": { rank: 42, centralizedRank: 70, retailRank: 71, p2pRank: 7, defiRank: 51, retailDefiRank: 51 },
+            "Ecuador": { rank: 43, centralizedRank: 47, retailRank: 45, p2pRank: 22, defiRank: 57, retailDefiRank: 57 },
+            "Belarus": { rank: 44, centralizedRank: 40, retailRank: 36, p2pRank: 61, defiRank: 41, retailDefiRank: 41 },
+            "Uganda": { rank: 45, centralizedRank: 105, retailRank: 86, p2pRank: 18, defiRank: 34, retailDefiRank: 34 },
+            "Kazakhstan": { rank: 46, centralizedRank: 41, retailRank: 35, p2pRank: 81, defiRank: 40, retailDefiRank: 40 },
+            "Algeria": { rank: 47, centralizedRank: 36, retailRank: 31, p2pRank: 43, defiRank: 84, retailDefiRank: 84 },
+            "Hong Kong": { rank: 48, centralizedRank: 56, retailRank: 69, p2pRank: 87, defiRank: 30, retailDefiRank: 30 },
+            "Peru": { rank: 49, centralizedRank: 35, retailRank: 33, p2pRank: 65, defiRank: 70, retailDefiRank: 70 },
+            "Sri Lanka": { rank: 50, centralizedRank: 48, retailRank: 41, p2pRank: 66, defiRank: 54, retailDefiRank: 54 },
+            "Laos": { rank: 51, centralizedRank: 49, retailRank: 40, p2pRank: 106, defiRank: 35, retailDefiRank: 35 },
+            "Georgia": { rank: 52, centralizedRank: 51, retailRank: 50, p2pRank: 91, defiRank: 39, retailDefiRank: 39 },
+            "Myanmar": { rank: 53, centralizedRank: 50, retailRank: 52, p2pRank: 17, defiRank: 91, retailDefiRank: 91 },
+            "Yemen": { rank: 54, centralizedRank: 32, retailRank: 49, p2pRank: 26, defiRank: 99, retailDefiRank: 99 },
+            "Tunisia": { rank: 55, centralizedRank: 43, retailRank: 44, p2pRank: 23, defiRank: 92, retailDefiRank: 92 },
+            "Nepal": { rank: 56, centralizedRank: 90, retailRank: 87, p2pRank: 20, defiRank: 52, retailDefiRank: 52 },
+            "Saudi Arabia": { rank: 57, centralizedRank: 61, retailRank: 53, p2pRank: 73, defiRank: 49, retailDefiRank: 49 },
+            "Bulgaria": { rank: 58, centralizedRank: 53, retailRank: 57, p2pRank: 100, defiRank: 38, retailDefiRank: 38 },
+            "Portugal": { rank: 59, centralizedRank: 55, retailRank: 66, p2pRank: 82, defiRank: 43, retailDefiRank: 43 },
+            "Moldova": { rank: 60, centralizedRank: 52, retailRank: 48, p2pRank: 77, defiRank: 63, retailDefiRank: 63 },
+            "Romania": { rank: 61, centralizedRank: 58, retailRank: 59, p2pRank: 80, defiRank: 48, retailDefiRank: 48 },
+            "Czech Republic": { rank: 62, centralizedRank: 59, retailRank: 60, p2pRank: 93, defiRank: 44, retailDefiRank: 44 },
+            "Switzerland": { rank: 63, centralizedRank: 71, retailRank: 85, p2pRank: 90, defiRank: 36, retailDefiRank: 36 },
+            "Iraq": { rank: 64, centralizedRank: 60, retailRank: 64, p2pRank: 27, defiRank: 98, retailDefiRank: 98 },
+            "Cote d'Ivoire": { rank: 65, centralizedRank: 85, retailRank: 73, p2pRank: 46, defiRank: 78, retailDefiRank: 78 },
+            "Jordan": { rank: 66, centralizedRank: 54, retailRank: 47, p2pRank: 68, defiRank: 87, retailDefiRank: 87 },
+            "Serbia": { rank: 67, centralizedRank: 65, retailRank: 67, p2pRank: 89, defiRank: 53, retailDefiRank: 53 },
+            "Chile": { rank: 68, centralizedRank: 66, retailRank: 65, p2pRank: 76, defiRank: 69, retailDefiRank: 69 },
+            "West Bank and Gaza": { rank: 69, centralizedRank: 46, retailRank: 84, p2pRank: 28, defiRank: 107, retailDefiRank: 107 },
+            "Sweden": { rank: 70, centralizedRank: 68, retailRank: 68, p2pRank: 79, defiRank: 67, retailDefiRank: 67 },
+            "Dominican Republic": { rank: 71, centralizedRank: 63, retailRank: 58, p2pRank: 45, defiRank: 96, retailDefiRank: 96 },
+            "Kyrgyzstan": { rank: 72, centralizedRank: 64, retailRank: 54, p2pRank: 122, defiRank: 42, retailDefiRank: 42 },
+            "Hungary": { rank: 73, centralizedRank: 79, retailRank: 77, p2pRank: 96, defiRank: 47, retailDefiRank: 47 },
+            "Azerbaijan": { rank: 74, centralizedRank: 67, retailRank: 56, p2pRank: 99, defiRank: 72, retailDefiRank: 72 },
+            "Israel": { rank: 75, centralizedRank: 76, retailRank: 79, p2pRank: 94, defiRank: 56, retailDefiRank: 56 },
+            "Greece": { rank: 76, centralizedRank: 69, retailRank: 72, p2pRank: 104, defiRank: 61, retailDefiRank: 61 },
+            "Singapore": { rank: 77, centralizedRank: 82, retailRank: 101, p2pRank: 84, defiRank: 59, retailDefiRank: 59 },
+            "UAE": { rank: 78, centralizedRank: 77, retailRank: 89, p2pRank: 102, defiRank: 60, retailDefiRank: 60 },
+            "Bolivia": { rank: 79, centralizedRank: 62, retailRank: 55, p2pRank: 64, defiRank: 111, retailDefiRank: 111 },
+            "Benin": { rank: 80, centralizedRank: 123, retailRank: 119, p2pRank: 34, defiRank: 79, retailDefiRank: 79 },
+            "Belgium": { rank: 81, centralizedRank: 74, retailRank: 82, p2pRank: 105, defiRank: 75, retailDefiRank: 75 },
+            "Mozambique": { rank: 82, centralizedRank: 92, retailRank: 88, p2pRank: 37, defiRank: 112, retailDefiRank: 112 },
+            "Senegal": { rank: 83, centralizedRank: 121, retailRank: 115, p2pRank: 58, defiRank: 76, retailDefiRank: 76 },
+            "Austria": { rank: 84, centralizedRank: 73, retailRank: 78, p2pRank: 127, defiRank: 65, retailDefiRank: 65 },
+            "Albania": { rank: 85, centralizedRank: 106, retailRank: 110, p2pRank: 98, defiRank: 58, retailDefiRank: 58 },
+            "Mongolia": { rank: 86, centralizedRank: 86, retailRank: 70, p2pRank: 74, defiRank: 103, retailDefiRank: 103 },
+            "Haiti": { rank: 87, centralizedRank: 103, retailRank: 113, p2pRank: 42, defiRank: 101, retailDefiRank: 101 },
+            "Lithuania": { rank: 88, centralizedRank: 88, retailRank: 94, p2pRank: 121, defiRank: 66, retailDefiRank: 66 },
+            "Armenia": { rank: 89, centralizedRank: 81, retailRank: 63, p2pRank: 113, defiRank: 88, retailDefiRank: 88 },
+            "New Zealand": { rank: 90, centralizedRank: 107, retailRank: 112, p2pRank: 101, defiRank: 68, retailDefiRank: 68 },
+            "Malawi": { rank: 91, centralizedRank: 108, retailRank: 118, p2pRank: 47, defiRank: 104, retailDefiRank: 104 },
+            "Costa Rica": { rank: 92, centralizedRank: 84, retailRank: 100, p2pRank: 103, defiRank: 86, retailDefiRank: 86 },
+            "Jamaica": { rank: 93, centralizedRank: 98, retailRank: 103, p2pRank: 50, defiRank: 113, retailDefiRank: 113 },
+            "Nicaragua": { rank: 94, centralizedRank: 117, retailRank: 111, p2pRank: 86, defiRank: 77, retailDefiRank: 77 },
+            "El Salvador": { rank: 95, centralizedRank: 80, retailRank: 80, p2pRank: 88, defiRank: 108, retailDefiRank: 108 },
+            "Paraguay": { rank: 96, centralizedRank: 111, retailRank: 99, p2pRank: 92, defiRank: 85, retailDefiRank: 85 },
+            "Panama": { rank: 97, centralizedRank: 113, retailRank: 114, p2pRank: 95, defiRank: 81, retailDefiRank: 81 },
+            "Slovakia": { rank: 98, centralizedRank: 75, retailRank: 81, p2pRank: 115, defiRank: 97, retailDefiRank: 97 },
+            "Finland": { rank: 99, centralizedRank: 97, retailRank: 97, p2pRank: 123, defiRank: 80, retailDefiRank: 80 },
+            "Latvia": { rank: 100, centralizedRank: 78, retailRank: 91, p2pRank: 148, defiRank: 64, retailDefiRank: 64 },
+            "Slovenia": { rank: 101, centralizedRank: 72, retailRank: 98, p2pRank: 129, defiRank: 82, retailDefiRank: 82 },
+            "Croatia": { rank: 102, centralizedRank: 91, retailRank: 93, p2pRank: 109, defiRank: 95, retailDefiRank: 95 },
+            "Zimbabwe": { rank: 103, centralizedRank: 83, retailRank: 102, p2pRank: 52, defiRank: 120, retailDefiRank: 120 },
+            "Guatemala": { rank: 104, centralizedRank: 87, retailRank: 76, p2pRank: 126, defiRank: 100, retailDefiRank: 100 },
+            "Honduras": { rank: 105, centralizedRank: 99, retailRank: 90, p2pRank: 97, defiRank: 109, retailDefiRank: 109 },
+            "Guinea": { rank: 106, centralizedRank: 131, retailRank: 129, p2pRank: 78, defiRank: 73, retailDefiRank: 73 },
+            "Estonia": { rank: 107, centralizedRank: 102, retailRank: 92, p2pRank: 139, defiRank: 83, retailDefiRank: 83 },
+            "Angola": { rank: 108, centralizedRank: 100, retailRank: 106, p2pRank: 67, defiRank: 116, retailDefiRank: 116 },
+            "Lebanon": { rank: 109, centralizedRank: 101, retailRank: 96, p2pRank: 83, defiRank: 118, retailDefiRank: 118 },
+            "Burkina Faso": { rank: 110, centralizedRank: 94, retailRank: 83, p2pRank: 39, defiRank: 131, retailDefiRank: 131 },
+            "Norway": { rank: 111, centralizedRank: 116, retailRank: 116, p2pRank: 124, defiRank: 102, retailDefiRank: 102 },
+            "Denmark": { rank: 112, centralizedRank: 104, retailRank: 105, p2pRank: 138, defiRank: 106, retailDefiRank: 106 },
+            "North Macedonia": { rank: 113, centralizedRank: 112, retailRank: 109, p2pRank: 147, defiRank: 89, retailDefiRank: 89 },
+            "Somalia": { rank: 114, centralizedRank: 95, retailRank: 74, p2pRank: 111, defiRank: 125, retailDefiRank: 125 },
+            "Ireland": { rank: 115, centralizedRank: 115, retailRank: 125, p2pRank: 131, defiRank: 94, retailDefiRank: 94 },
+            "Kuwait": { rank: 116, centralizedRank: 119, retailRank: 122, p2pRank: 130, defiRank: 93, retailDefiRank: 93 },
+            "Mauritius": { rank: 117, centralizedRank: 138, retailRank: 141, p2pRank: 110, defiRank: 62, retailDefiRank: 62 },
+            "Togo": { rank: 118, centralizedRank: 126, retailRank: 120, p2pRank: 51, defiRank: 129, retailDefiRank: 129 },
+            "Libya": { rank: 119, centralizedRank: 125, retailRank: 124, p2pRank: 108, defiRank: 114, retailDefiRank: 114 },
+            "Zambia": { rank: 120, centralizedRank: 114, retailRank: 117, p2pRank: 41, defiRank: 132, retailDefiRank: 132 },
+            "Uruguay": { rank: 121, centralizedRank: 110, retailRank: 107, p2pRank: 117, defiRank: 123, retailDefiRank: 123 },
+            "Puerto Rico": { rank: 122, centralizedRank: 120, retailRank: 131, p2pRank: 133, defiRank: 105, retailDefiRank: 105 },
+            "Cyprus": { rank: 123, centralizedRank: 118, retailRank: 121, p2pRank: 145, defiRank: 110, retailDefiRank: 110 },
+            "Mali": { rank: 124, centralizedRank: 127, retailRank: 108, p2pRank: 31, defiRank: 137, retailDefiRank: 137 },
+            "Madagascar": { rank: 125, centralizedRank: 93, retailRank: 95, p2pRank: 53, defiRank: 138, retailDefiRank: 138 },
+            "Bosnia and Herzegovina": { rank: 126, centralizedRank: 109, retailRank: 123, p2pRank: 144, defiRank: 119, retailDefiRank: 119 },
+            "Bahamas": { rank: 127, centralizedRank: 130, retailRank: 130, p2pRank: 128, defiRank: 117, retailDefiRank: 117 },
+            "Luxembourg": { rank: 128, centralizedRank: 143, retailRank: 145, p2pRank: 107, defiRank: 115, retailDefiRank: 115 },
+            "Trinidad and Tobago": { rank: 129, centralizedRank: 133, retailRank: 136, p2pRank: 112, defiRank: 127, retailDefiRank: 127 },
+            "Democratic Republic of Congo": { rank: 130, centralizedRank: 96, retailRank: 75, p2pRank: 10, defiRank: 145, retailDefiRank: 145 },
+            "Syria": { rank: 131, centralizedRank: 124, retailRank: 104, p2pRank: 85, defiRank: 140, retailDefiRank: 140 },
+            "Montenegro": { rank: 132, centralizedRank: 129, retailRank: 132, p2pRank: 149, defiRank: 124, retailDefiRank: 124 },
+            "Bahrain": { rank: 133, centralizedRank: 136, retailRank: 142, p2pRank: 141, defiRank: 122, retailDefiRank: 122 },
+            "Macao": { rank: 134, centralizedRank: 135, retailRank: 135, p2pRank: 143, defiRank: 128, retailDefiRank: 128 },
+            "Tajikistan": { rank: 135, centralizedRank: 122, retailRank: 128, p2pRank: 116, defiRank: 139, retailDefiRank: 139 },
+            "Cuba": { rank: 136, centralizedRank: 132, retailRank: 126, p2pRank: 136, defiRank: 134, retailDefiRank: 134 },
+            "Oman": { rank: 137, centralizedRank: 140, retailRank: 138, p2pRank: 150, defiRank: 121, retailDefiRank: 121 },
+            "Qatar": { rank: 138, centralizedRank: 139, retailRank: 137, p2pRank: 142, defiRank: 130, retailDefiRank: 130 },
+            "Malta": { rank: 139, centralizedRank: 141, retailRank: 143, p2pRank: 151, defiRank: 126, retailDefiRank: 126 },
+            "Namibia": { rank: 140, centralizedRank: 134, retailRank: 140, p2pRank: 118, defiRank: 142, retailDefiRank: 142 },
+            "Maldives": { rank: 141, centralizedRank: 150, retailRank: 148, p2pRank: 114, defiRank: 136, retailDefiRank: 136 },
+            "Rwanda": { rank: 142, centralizedRank: 137, retailRank: 133, p2pRank: 48, defiRank: 147, retailDefiRank: 147 },
+            "Seychelles": { rank: 143, centralizedRank: 145, retailRank: 134, p2pRank: 134, defiRank: 143, retailDefiRank: 143 },
+            "Botswana": { rank: 144, centralizedRank: 144, retailRank: 147, p2pRank: 132, defiRank: 141, retailDefiRank: 141 },
+            "Antigua and Barbuda": { rank: 145, centralizedRank: 148, retailRank: 151, p2pRank: 135, defiRank: 135, retailDefiRank: 135 },
+            "Niger": { rank: 146, centralizedRank: 149, retailRank: 144, p2pRank: 59, defiRank: 146, retailDefiRank: 146 },
+            "Afghanistan": { rank: 147, centralizedRank: 128, retailRank: 127, p2pRank: 125, defiRank: 149, retailDefiRank: 149 },
+            "Barbados": { rank: 148, centralizedRank: 89, retailRank: 61, p2pRank: 119, defiRank: 151, retailDefiRank: 151 },
+            "Suriname": { rank: 149, centralizedRank: 147, retailRank: 146, p2pRank: 146, defiRank: 144, retailDefiRank: 144 },
+            "Gabon": { rank: 150, centralizedRank: 151, retailRank: 150, p2pRank: 120, defiRank: 148, retailDefiRank: 148 },
+            "Iceland": { rank: 151, centralizedRank: 146, retailRank: 149, p2pRank: 153, defiRank: 133, retailDefiRank: 133 },
+            "Fiji": { rank: 152, centralizedRank: 142, retailRank: 139, p2pRank: 137, defiRank: 152, retailDefiRank: 152 },
+            "Brunei Darussalam": { rank: 153, centralizedRank: 152, retailRank: 152, p2pRank: 152, defiRank: 150, retailDefiRank: 150 },
+            "Cabo Verde": { rank: 154, centralizedRank: 153, retailRank: 153, p2pRank: 140, defiRank: 154, retailDefiRank: 154 },
+            "Guyana": { rank: 155, centralizedRank: 154, retailRank: 154, p2pRank: 154, defiRank: 153, retailDefiRank: 153 }
+        };
+
+        // Update the createPopupContent function
+        function createPopupContent(countryName, gdpData) {
+            const cryptoData = cryptoAdoptionData[countryName];
+            
+            if (cryptoData) {
+                // Calculate the weighted score and GDP contribution
+                const maxRank = 155;
+                const weights = {
+                    rank: 0.25,
+                    centralizedRank: 0.2,
+                    retailRank: 0.15,
+                    p2pRank: 0.15,
+                    defiRank: 0.15,
+                    retailDefiRank: 0.1
+                };
+                
+                let weightedScore = 0;
+                const scores = {};
+                for (const [metric, weight] of Object.entries(weights)) {
+                    scores[metric] = ((maxRank - cryptoData[metric] + 1) / maxRank) * 100;
+                    weightedScore += scores[metric] * weight;
+                }
+                
+                let gdpContribution = calculateCryptoGDPContribution(cryptoData);
+                const estimatedCryptoGDP = (gdpData.gdp * gdpContribution / 100);
+                
+                return `
+                    <div style="padding: 15px;">
+                        <h3 style="margin-bottom: 15px;">${countryName}</h3>
+                        
+                        <div style="font-size: 1.2em; margin-bottom: 20px;">
+                            <div style="margin-bottom: 10px;">
+                                <strong>Crypto GDP Impact:</strong><br>
+                                <span style="font-size: 1.4em; color: #2c3e50;">${formatGDP(estimatedCryptoGDP)}</span>
+                            </div>
+                            <div>
+                                <strong>% of National GDP:</strong><br>
+                                <span style="font-size: 1.4em; color: #2c3e50;">${gdpContribution.toFixed(2)}%</span>
+                                <span style="color: #666; font-size: 0.9em;">(Total GDP: ${formatGDP(gdpData.gdp)})</span>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 15px;">
+                            <strong>Key Rankings:</strong>
+                            <ul style="list-style: none; padding-left: 15px; margin: 5px 0;">
+                                <li>Overall: #${cryptoData.rank}</li>
+                                <li>Centralized Services: #${cryptoData.centralizedRank}</li>
+                                <li>DeFi Adoption: #${cryptoData.defiRank}</li>
+                                <li>P2P Trading: #${cryptoData.p2pRank}</li>
+                            </ul>
+                        </div>
+
+                        <details style="margin-top: 10px;">
+                            <summary style="cursor: pointer; color: #666;">View Calculation Details</summary>
+                            <div style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                                <div style="margin-bottom: 15px;">
+                                    <strong>Step 1: Percentile Score Calculation</strong>
+                                    <ul style="list-style: none; padding-left: 15px; margin: 5px 0; font-size: 0.9em;">
+                                        ${Object.entries(weights).map(([metric, weight]) => {
+                                            const score = ((maxRank - cryptoData[metric] + 1) / maxRank) * 100;
+                                            return `<li>• ${formatMetricName(metric)}: ${score.toFixed(1)}% (Rank #${cryptoData[metric]} → ${score.toFixed(1)}%)</li>`;
+                                        }).join('')}
+                                    </ul>
+                                </div>
+
+                                <div style="margin-bottom: 15px;">
+                                    <strong>Step 2: Weighted Average</strong>
+                                    <ul style="list-style: none; padding-left: 15px; margin: 5px 0; font-size: 0.9em;">
+                                        ${Object.entries(weights).map(([metric, weight]) => {
+                                            const score = ((maxRank - cryptoData[metric] + 1) / maxRank) * 100;
+                                            const weightedValue = score * weight;
+                                            return `<li>• ${formatMetricName(metric)}: ${score.toFixed(1)}% × ${(weight * 100).toFixed(0)}% = ${weightedValue.toFixed(1)}%</li>`;
+                                        }).join('')}
+                                        <li style="margin-top: 5px;"><strong>Final Score: ${weightedScore.toFixed(1)}%</strong></li>
+                                    </ul>
+                                </div>
+
+                                <div style="margin-bottom: 15px;">
+                                    <strong>Step 3: GDP Impact Calculation</strong>
+                                    <div style="padding-left: 15px; margin: 5px 0; font-size: 0.9em;">
+                                        <p>Score ${weightedScore.toFixed(1)}% falls in tier: ${getScoreTierDescription(weightedScore)}</p>
+                                        <p>Formula: ${getGDPFormula(weightedScore)}</p>
+                                        <p>Result: ${gdpContribution.toFixed(2)}% of GDP</p>
+                                        <p>Impact: ${formatGDP(gdpData.gdp)} × ${gdpContribution.toFixed(2)}% = ${formatGDP(estimatedCryptoGDP)}</p>
+                                    </div>
+                                </div>
+
+                                <div style="color: #666; font-size: 0.8em; margin-top: 10px; border-top: 1px solid #ddd; padding-top: 10px;">
+                                    Based on Chainalysis 2023 Global Crypto Adoption Index and World Bank GDP data (2022)
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                `;
+            }
+
+            return `
+                <div style="padding: 10px;">
+                    <h3 style="margin-bottom: 10px;">${countryName}</h3>
+                    <p><strong>GDP (2022):</strong> ${formatGDP(gdpData.gdp)}</p>
+                    <p>No crypto adoption data available</p>
+                </div>
+            `;
+        }
+
+        // Update the calculateCryptoGDPContribution function
+        function calculateCryptoGDPContribution(countryData) {
+            if (!countryData) return 0;
+
+            const maxRank = 155;
+            const weights = {
+                rank: 0.25,
+                centralizedRank: 0.2,
+                retailRank: 0.15,
+                p2pRank: 0.15,
+                defiRank: 0.15,
+                retailDefiRank: 0.1
+            };
+
+            let weightedScore = 0;
+            for (const [metric, weight] of Object.entries(weights)) {
+                const score = ((maxRank - countryData[metric] + 1) / maxRank) * 100;
+                weightedScore += score * weight;
+            }
+
+            // Sensitivity analysis: Adjust the contribution calculation
+            let gdpContribution = 0;
+            if (weightedScore >= 80) {
+                gdpContribution = 5 + (weightedScore - 80) * 0.1;
+            } else if (weightedScore >= 70) {
+                gdpContribution = 4 + (weightedScore - 70) * 0.1;
+            } else if (weightedScore >= 60) {
+                gdpContribution = 2 + (weightedScore - 60) * 0.2;
+            } else if (weightedScore >= 50) {
+                gdpContribution = 1 + (weightedScore - 50) * 0.1;
+            } else {
+                gdpContribution = Math.max(0.1, weightedScore * 0.02);
+            }
+
+            return Math.min(gdpContribution, 6.0);
+        }
+
+        // Main function to initialize the map with GDP data
+        async function initializeMap() {
+            try {
+                const gdpData = await fetchGDPData();
+
+                // Fetch GeoJSON data and add to map
+                const response = await fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson');
+                const geoData = await response.json();
+
+                // Update the style function to use crypto GDP contribution
+                function style(feature) {
+                    const iso3 = feature.properties.ISO_A3;
+                    const data = gdpData[iso3];
+                    const cryptoGDPContribution = data ? calculateCryptoGDPContribution(cryptoAdoptionData[data.name]) : 0;
+                    return {
+                        fillColor: getColor(cryptoGDPContribution),
+                        weight: 2,
+                        opacity: 1,
+                        color: 'white',
+                        fillOpacity: 0.7
+                    };
+                }
+
+                // Update the onEachFeature function for better click handling
+                function onEachFeature(feature, layer) {
+                    layer.on({
+                        click: function(e) {
+                            const iso3 = feature.properties.ISO_A3;
+                            const data = gdpData[iso3];
+                            
+                            // Reset all layers to default style
+                            geoJsonLayer.eachLayer(function(l) {
+                                if (l !== layer) {
+                                    l.setStyle({
+                                        weight: 2,
+                                        opacity: 1,
+                                        color: 'white',
+                                        fillOpacity: 0.7
+                                    });
+                                }
+                            });
+                            
+                            // Highlight clicked country
+                            layer.setStyle({
+                                weight: 3,
+                                color: '#666',
+                                fillOpacity: 0.9
+                            });
+
+                            // Calculate center point of the country
+                            const bounds = layer.getBounds();
+                            const center = bounds.getCenter();
+                            
+                            // Create popup first
+                            if (data) {
+                                const popup = L.popup({
+                                    maxWidth: 400,
+                                    autoPan: false,  // Disable automatic panning
+                                    className: 'custom-popup'
+                                })
+                                .setLatLng(center)
+                                .setContent(createPopupContent(data.name, data));
+                                
+                                // Calculate appropriate zoom level based on country size
+                                const countryWidth = bounds.getEast() - bounds.getWest();
+                                const countryHeight = bounds.getNorth() - bounds.getSouth();
+                                const maxDimension = Math.max(countryWidth, countryHeight);
+                                
+                                // Adjust zoom based on country size
+                                let targetZoom;
+                                if (maxDimension > 45) targetZoom = 3;      // Very large countries
+                                else if (maxDimension > 25) targetZoom = 4; // Large countries
+                                else if (maxDimension > 10) targetZoom = 5; // Medium countries
+                                else targetZoom = 6;                        // Small countries
+
+                                // First fit bounds with padding
+                                map.fitBounds(bounds, {
+                                    padding: [100, 100],
+                                    maxZoom: targetZoom,
+                                    animate: true,
+                                    duration: 1
+                                });
+
+                                // Wait for the zoom animation to complete before showing popup
+                                setTimeout(() => {
+                                    popup.openOn(map);
+                                    
+                                    // Adjust map view if popup is cut off
+                                    const popupBounds = popup.getElement().getBoundingClientRect();
+                                    const mapBounds = map.getContainer().getBoundingClientRect();
+                                    
+                                    if (popupBounds.right > mapBounds.right ||
+                                        popupBounds.left < mapBounds.left ||
+                                        popupBounds.top < mapBounds.top ||
+                                        popupBounds.bottom > mapBounds.bottom) {
+                                        
+                                        map.panInside(center, {
+                                            padding: [50, 50],
+                                            animate: true
+                                        });
+                                    }
+                                }, 1000);
+                            } else {
+                                const popup = L.popup({
+                                    maxWidth: 300,
+                                    autoPan: false
+                                })
+                                .setLatLng(center)
+                                .setContent(`
+                                    <div style="padding: 10px;">
+                                        <h3>${feature.properties.ADMIN}</h3>
+                                        <p>No GDP data available</p>
+                                    </div>
+                                `)
+                                .openOn(map);
+                            }
+
+                            // Prevent the click event from propagating to the map
+                            L.DomEvent.stopPropagation(e);
+                        },
+                        mouseover: function(e) {
+                            layer.setStyle({
+                                weight: 3,
+                                color: '#666'
+                            });
+                        },
+                        mouseout: function(e) {
+                            if (!layer._popup || !layer._popup.isOpen()) {
+                                layer.setStyle({
+                                    weight: 2,
+                                    color: 'white'
+                                });
+                            }
+                        }
+                    });
+                }
+
+                // Create and store the GeoJSON layer reference
+                const geoJsonLayer = L.geoJson(geoData, {
+                    style: style,
+                    onEachFeature: onEachFeature
+                }).addTo(map);
+
+                // Remove loading message
+                document.body.removeChild(loadingDiv);
+
+                // Update global stats
+                updateGlobalStats(gdpData);
+
+            } catch (error) {
+                console.error('Error initializing map:', error);
+                loadingDiv.innerHTML = 'Error loading data. Please try again later.';
+            }
+        }
+
+        // Update the updateGlobalStats function
+        function updateGlobalStats(gdpData) {
+            let totalGlobalGDP = 0;
+            let totalCryptoGDP = 0;
+            let totalCountries = 0;
+
+            // Calculate totals
+            for (const iso3 in gdpData) {
+                const data = gdpData[iso3];
+                if (data && data.gdp) {
+                    totalGlobalGDP += data.gdp;
+                    const cryptoGDPContribution = calculateCryptoGDPContribution(cryptoAdoptionData[data.name]);
+                    totalCryptoGDP += (data.gdp * cryptoGDPContribution / 100);
+                    totalCountries++;
+                }
+            }
+
+            // Calculate percentage
+            const cryptoPercentage = (totalCryptoGDP / totalGlobalGDP) * 100;
+
+            // Update the stats container
+            document.querySelector('.stats-container').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${formatGDP(totalCryptoGDP)}</div>
+                    <div class="stat-label">Global Crypto GDP Impact</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${cryptoPercentage.toFixed(1)}%</div>
+                    <div class="stat-label">of Global GDP (${formatGDP(totalGlobalGDP)})</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">420M+</div>
+                    <div class="stat-label">Global Crypto Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${totalCountries}</div>
+                    <div class="stat-label">Countries Analyzed</div>
+                </div>
+            `;
+        }
+
+        function formatMetricName(metric) {
+            const names = {
+                rank: 'Overall Adoption',
+                centralizedRank: 'Centralized Services',
+                retailRank: 'Retail Trading',
+                p2pRank: 'P2P Trading',
+                defiRank: 'DeFi Adoption',
+                retailDefiRank: 'Retail DeFi'
+            };
+            return names[metric] || metric;
+        }
+
+        function getScoreTierDescription(score) {
+            if (score >= 80) return '80+ (Highest Impact: 5-6% GDP)';
+            if (score >= 70) return '70-79 (High Impact: 4-5% GDP)';
+            if (score >= 60) return '60-69 (Medium Impact: 2-4% GDP)';
+            if (score >= 50) return '50-59 (Moderate Impact: 1-2% GDP)';
+            return 'Below 50 (Low Impact: 0.1-1% GDP)';
+        }
+
+        function getGDPFormula(score) {
+            if (score >= 80) return `5 + (${score.toFixed(1)} - 80) × 0.1`;
+            if (score >= 70) return `4 + (${score.toFixed(1)} - 70) × 0.1`;
+            if (score >= 60) return `2 + (${score.toFixed(1)} - 60) × 0.2`;
+            if (score >= 50) return `1 + (${score.toFixed(1)} - 50) × 0.1`;
+            return `max(0.1, ${score.toFixed(1)} × 0.02)`;
+        }
+
+        // Initialize the map
+        initializeMap();
+    </script>
+</body>
+</html>
